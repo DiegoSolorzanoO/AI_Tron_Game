@@ -6,7 +6,7 @@ import random
 
 pygame.init()
 
-FPS = 60
+FPS = 55
 SPEED = 2
 FramePerSec = pygame.time.Clock()
 
@@ -18,7 +18,7 @@ COLORS = {
     'GREEN': (0, 255, 0)
 }
 
-MAX_DISPLAY_SIZE = 600
+MAX_DISPLAY_SIZE = 500
 DISPLAY_SURFACE = pygame.display.set_mode((MAX_DISPLAY_SIZE, MAX_DISPLAY_SIZE))
 DISPLAY_SURFACE.fill(COLORS['BLACK'])
 
@@ -47,22 +47,34 @@ class Player:
     def __init__(self, color, speed, size=10):
         self.speed = speed
         self.direction = (0, 1, 'down')
-        self.position = (random.randint(200, 400), 100)
+        self.position = (random.randint(200, 400), 50)
         self.size = size
         self.color = color
-        self.tail = {}
+        self.tail = []
         self.alive = True
+        self.s_tail_x = {}
+        self.s_tail_y = {}
 
     def die(self):
         self.color = COLORS['WHITE']
         self.alive = False
 
-    def update(self, enemy):
+    def update(self):
         # adds position to tail
-        self.tail[(
+        self.tail.append((
             self.position[0],
             self.position[1]
-        )] = 1
+        ))
+
+        if self.position[0] in self.s_tail_x:
+            self.s_tail_x[self.position[0]][self.position[1]] = 1
+        else:
+            self.s_tail_x[self.position[0]] = {self.position[1]: 1}
+
+        if self.position[1] in self.s_tail_y:
+            self.s_tail_y[self.position[1]][self.position[0]] = 1
+        else:
+            self.s_tail_y[self.position[1]] = {self.position[0]: 1}
 
         # sets next position
         self.position = (
@@ -73,9 +85,18 @@ class Player:
         # checks if touching itself or touching boundaries
         for i in range(self.speed):
             for j in range(self.speed):
-                if (self.position[0] + i, self.position[1] + j) in self.tail or (self.position[0] + i, self.position[1] + j) in enemy.tail:
-                    self.die()
-                    return
+                try:
+                    if self.s_tail_x[self.position[0] + i][self.position[1] + j] == 1:
+                        self.die()
+                        return
+                except:
+                    pass
+                try:
+                    if enemy.s_tail_x[self.position[0] + i][self.position[1] + j] == 1:
+                        self.die()
+                        return
+                except:
+                    pass
         if self.position[0] < 0 or self.position[0] > MAX_DISPLAY_SIZE:
             self.die()
             return
@@ -106,7 +127,7 @@ class Player:
         ))
 
         # draw tail
-        for tail_block in self.tail.keys():
+        for tail_block in self.tail:
             m = self.size / 2
             pygame.draw.rect(
                 surface,
@@ -124,27 +145,39 @@ class Enemy:
 
     wide_range = 0.05
     close_range = 0.01
-    random_factor = 0.02
+    random_factor = 0.01
 
     def __init__(self, color, speed, size=10):
         self.speed = speed
         self.direction = (0, -1, 'up')
-        self.position = (random.randint(200, 400), 500)
+        self.position = (random.randint(200, 400), 450)
         self.size = size
         self.color = color
-        self.tail = {}
+        self.tail = []
         self.alive = True
+        self.s_tail_x = {}
+        self.s_tail_y = {}
 
     def die(self):
         self.color = COLORS['WHITE']
         self.alive = False
 
-    def update(self, player):
+    def update(self):
         # adds position to tail
-        self.tail[(
+        self.tail.append((
             self.position[0],
             self.position[1]
-        )] = 1
+        ))
+
+        if self.position[0] in self.s_tail_x:
+            self.s_tail_x[self.position[0]][self.position[1]] = 1
+        else:
+            self.s_tail_x[self.position[0]] = {self.position[1]: 1}
+
+        if self.position[1] in self.s_tail_y:
+            self.s_tail_y[self.position[1]][self.position[0]] = 1
+        else:
+            self.s_tail_y[self.position[1]] = {self.position[0]: 1}
 
         # sets next position
         self.position = (
@@ -155,9 +188,18 @@ class Enemy:
         # checks if touching itself or touching boundaries
         for i in range(self.speed):
             for j in range(self.speed):
-                if (self.position[0] + i, self.position[1] + j) in self.tail or (self.position[0] + i, self.position[1] + j) in player.tail:
-                    self.die()
-                    return
+                try:
+                    if self.s_tail_x[self.position[0] + i][self.position[1] + j] == 1:
+                        self.die()
+                        return
+                except:
+                    pass
+                try:
+                    if player.s_tail_x[self.position[0] + i][self.position[1] + j] == 1:
+                        self.die()
+                        return
+                except:
+                    pass
         if self.position[0] < 0 or self.position[0] > MAX_DISPLAY_SIZE:
             self.die()
             return
@@ -172,29 +214,29 @@ class Enemy:
             'down': 0
         }
 
-        # boundaries weight check
-        if MAX_DISPLAY_SIZE - self.position[0] < MAX_DISPLAY_SIZE * self.close_range:
-            weights['right'] += 2
-        elif MAX_DISPLAY_SIZE - self.position[0] < MAX_DISPLAY_SIZE * self.wide_range:
-            weights['right'] += 1
-
-        if self.position[0] < MAX_DISPLAY_SIZE * self.close_range:
-            weights['left'] += 2
-        elif self.position[0] < MAX_DISPLAY_SIZE * self.wide_range:
-            weights['left'] += 1
-
-        if self.position[1] < MAX_DISPLAY_SIZE * self.close_range:
-            weights['up'] += 2
-        elif self.position[1] < MAX_DISPLAY_SIZE * self.wide_range:
-            weights['up'] += 1
-
-        if MAX_DISPLAY_SIZE - self.position[1] < MAX_DISPLAY_SIZE * self.close_range:
-            weights['down'] += 2
-        elif MAX_DISPLAY_SIZE - self.position[1] < MAX_DISPLAY_SIZE * self.wide_range:
-            weights['down'] += 1
-
         area_sensor = int(MAX_DISPLAY_SIZE * self.close_range)
         area_sensor_wide = int(MAX_DISPLAY_SIZE * self.wide_range * 1.1)
+
+        # boundaries weight check
+        if MAX_DISPLAY_SIZE - self.position[0] < area_sensor:
+            weights['right'] += 2
+        elif MAX_DISPLAY_SIZE - self.position[0] < area_sensor_wide:
+            weights['right'] += 1
+
+        if self.position[0] < area_sensor:
+            weights['left'] += 2
+        elif self.position[0] < area_sensor_wide:
+            weights['left'] += 1
+
+        if self.position[1] < area_sensor:
+            weights['up'] += 2
+        elif self.position[1] < area_sensor_wide:
+            weights['up'] += 1
+
+        if MAX_DISPLAY_SIZE - self.position[1] < area_sensor:
+            weights['down'] += 2
+        elif MAX_DISPLAY_SIZE - self.position[1] < area_sensor_wide:
+            weights['down'] += 1
 
         close_to_right = False
         close_to_left = False
@@ -206,49 +248,73 @@ class Enemy:
         close_to_down_player = False
         for i in range(0, area_sensor):
             if 'right' != OPPOSITES[self.direction[2]]:
-                if (self.position[0] + i, self.position[1]) in self.tail and not close_to_right:
-                    close_to_right = True
-                    weights['right'] += 2
-                    weights['up'] += 1
-                    weights['down'] += 1
-                if (self.position[0] + i, self.position[1]) in player.tail and not close_to_right_player:
-                    close_to_right_player = True
-                    weights['right'] += 2
-                    weights['up'] += 1
-                    weights['down'] += 1
+                try:
+                    if self.s_tail_y[self.position[1]][self.position[0] + i] == 1 and not close_to_right:
+                        close_to_right = True
+                        weights['right'] += 2
+                        weights['up'] += 1
+                        weights['down'] += 1
+                except:
+                    pass
+                try:
+                    if player.s_tail_y[self.position[1]][self.position[0] + i] == 1 and not close_to_right_player:
+                        close_to_right_player = True
+                        weights['right'] += 2
+                        weights['up'] += 1
+                        weights['down'] += 1
+                except:
+                    pass
             if 'left' != OPPOSITES[self.direction[2]]:
-                if (self.position[0] - i, self.position[1]) in self.tail and not close_to_left:
-                    close_to_left = True
-                    weights['left'] += 2
-                    weights['up'] += 1
-                    weights['down'] += 1
-                if (self.position[0] - i, self.position[1]) in player.tail and not close_to_left_player:
-                    close_to_left_player = True
-                    weights['left'] += 2
-                    weights['up'] += 1
-                    weights['down'] += 1
+                try:
+                    if self.s_tail_y[self.position[1]][self.position[0] - i] == 1 and not close_to_left:
+                        close_to_left = True
+                        weights['left'] += 2
+                        weights['up'] += 1
+                        weights['down'] += 1
+                except:
+                    pass
+                try:
+                    if player.s_tail_y[self.position[1]][self.position[0] - i] == 1 and not close_to_left_player:
+                        close_to_left_player = True
+                        weights['left'] += 2
+                        weights['up'] += 1
+                        weights['down'] += 1
+                except:
+                    pass
             if 'up' != OPPOSITES[self.direction[2]]:
-                if (self.position[0], self.position[1] - i) in self.tail and not close_to_up:
-                    close_to_up = True
-                    weights['up'] += 2
-                    weights['left'] += 1
-                    weights['right'] += 1
-                if (self.position[0], self.position[1] - i) in player.tail and not close_to_up_player:
-                    close_to_up_player = True
-                    weights['up'] += 2
-                    weights['left'] += 1
-                    weights['right'] += 1
+                try:
+                    if self.s_tail_x[self.position[0]][self.position[1] - i] == 1 and not close_to_up:
+                        close_to_up = True
+                        weights['up'] += 2
+                        weights['left'] += 1
+                        weights['right'] += 1
+                except:
+                    pass
+                try:
+                    if player.s_tail_x[self.position[0]][self.position[1] - i] == 1 and not close_to_up_player:
+                        close_to_up_player = True
+                        weights['up'] += 2
+                        weights['left'] += 1
+                        weights['right'] += 1
+                except:
+                    pass
             if 'down' != OPPOSITES[self.direction[2]]:
-                if (self.position[0], self.position[1] + i) in self.tail and not close_to_down:
-                    close_to_down = True
-                    weights['down'] += 2
-                    weights['left'] += 1
-                    weights['right'] += 1
-                if (self.position[0], self.position[1] + i) in player.tail and not close_to_down_player:
-                    close_to_down_player = True
-                    weights['down'] += 2
-                    weights['left'] += 1
-                    weights['right'] += 1
+                try:
+                    if self.s_tail_x[self.position[0]][self.position[1] + i] == 1 and not close_to_down:
+                        close_to_down = True
+                        weights['down'] += 2
+                        weights['left'] += 1
+                        weights['right'] += 1
+                except:
+                    pass
+                try:
+                    if player.s_tail_x[self.position[0]][self.position[1] + i] == 1 and not close_to_down_player:
+                        close_to_down_player = True
+                        weights['down'] += 2
+                        weights['left'] += 1
+                        weights['right'] += 1
+                except:
+                    pass
 
         close_to_right = False
         close_to_left = False
@@ -260,33 +326,57 @@ class Enemy:
         close_to_down_player = False
         for i in range(area_sensor, area_sensor_wide):
             if 'right' != OPPOSITES[self.direction[2]]:
-                if (self.position[0] + i, self.position[1]) in self.tail and not close_to_right:
-                    close_to_right = True
-                    weights['right'] += 1
-                if (self.position[0] + i, self.position[1]) in player.tail and not close_to_right_player:
-                    close_to_right_player = True
-                    weights['right'] += 1
+                try:
+                    if self.s_tail_y[self.position[1]][self.position[0] + i] == 1 and not close_to_right:
+                        close_to_right = True
+                        weights['right'] += 1
+                except:
+                    pass
+                try:
+                    if player.s_tail_y[self.position[1]][self.position[0] + i] == 1 and not close_to_right_player:
+                        close_to_right_player = True
+                        weights['right'] += 1
+                except:
+                    pass
             if 'left' != OPPOSITES[self.direction[2]]:
-                if (self.position[0] - i, self.position[1]) in self.tail and not close_to_left:
-                    close_to_left = True
-                    weights['left'] += 1
-                if (self.position[0] - i, self.position[1]) in player.tail and not close_to_left_player:
-                    close_to_left_player = True
-                    weights['left'] += 1
+                try:
+                    if self.s_tail_y[self.position[1]][self.position[0] - i] == 1 and not close_to_left:
+                        close_to_left = True
+                        weights['left'] += 1
+                except:
+                    pass
+                try:
+                    if player.s_tail_y[self.position[1]][self.position[0] - i] == 1 and not close_to_left_player:
+                        close_to_left_player = True
+                        weights['left'] += 1
+                except:
+                    pass
             if 'up' != OPPOSITES[self.direction[2]]:
-                if (self.position[0], self.position[1] - i) in self.tail and not close_to_up:
-                    close_to_up = True
-                    weights['up'] += 1
-                if (self.position[0], self.position[1] - i) in player.tail and not close_to_up_player:
-                    close_to_up_player = True
-                    weights['up'] += 1
+                try:
+                    if self.s_tail_x[self.position[0]][self.position[1] - i] == 1 and not close_to_up:
+                        close_to_up = True
+                        weights['up'] += 1
+                except:
+                    pass
+                try:
+                    if player.s_tail_x[self.position[0]][self.position[1] - i] == 1 and not close_to_up_player:
+                        close_to_up_player = True
+                        weights['up'] += 1
+                except:
+                    pass
             if 'down' != OPPOSITES[self.direction[2]]:
-                if (self.position[0], self.position[1] + i) in self.tail and not close_to_down:
-                    close_to_down = True
-                    weights['down'] += 1
-                if (self.position[0], self.position[1] + i) in player.tail and not close_to_down_player:
-                    close_to_down_player = True
-                    weights['down'] += 1
+                try:
+                    if self.s_tail_x[self.position[0]][self.position[1] + i] == 1 and not close_to_down:
+                        close_to_down = True
+                        weights['down'] += 1
+                except:
+                    pass
+                try:
+                    if player.s_tail_x[self.position[0]][self.position[1] + i] == 1 and not close_to_down_player:
+                        close_to_down_player = True
+                        weights['down'] += 1
+                except:
+                    pass
 
         random_change = False
         new_dir = None
@@ -337,7 +427,7 @@ class Enemy:
         ))
 
         # Draw tail
-        for tail_block in self.tail.keys():
+        for tail_block in self.tail:
             m = self.size / 2
             pygame.draw.rect(
                 surface,
@@ -371,8 +461,8 @@ while True:
             sys.exit()
 
     if enemy.alive and player.alive:
-        player.update(enemy)
-        enemy.update(player)
+        player.update()
+        enemy.update()
 
     DISPLAY_SURFACE.fill(COLORS['BLACK'])
 
